@@ -1,0 +1,617 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:email="http://www.mulesoft.org/schema/mule/email"
+	xmlns:smtp="http://www.mulesoft.org/schema/mule/smtp"
+	xmlns:java="http://www.mulesoft.org/schema/mule/java"
+	xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw"
+	xmlns:ftp="http://www.mulesoft.org/schema/mule/ftp"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd 
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ftp http://www.mulesoft.org/schema/mule/ftp/current/mule-ftp.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd
+http://www.mulesoft.org/schema/mule/java http://www.mulesoft.org/schema/mule/java/current/mule-java.xsd
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="df483cdb-d65d-47d6-8579-8d8cff882fbf" >
+		<http:listener-connection host="0.0.0.0" port="8081" />    
+	</http:listener-config>
+	<http:request-config name="HTTP_Request_configuration_open_ai" doc:name="HTTP Request configuration" doc:id="4178c932-6981-4a00-801e-71b2a49024d1" >
+		<http:request-connection protocol="HTTPS" host="api.openai.com" port="443"/>
+	</http:request-config>
+	<http:listener-config name="HTTP_Listener_config1" doc:name="HTTP Listener config" doc:id="2de09560-c2f9-4a92-9b8c-26407d59c068" >
+		<http:listener-connection host="0.0.0.0" port="8082" />
+	</http:listener-config>
+	<http:request-config name="HTTP_Request_configuration1" doc:name="HTTP Request configuration" doc:id="7e15ea19-8ce5-49f9-89c3-0fccc5525159" >
+		<http:request-connection protocol="HTTPS" host="d13a78-3c.myshopify.com/api/2024-04/" />
+	</http:request-config>
+	<http:request-config name="HTTP_Request_configuration_wix" doc:name="HTTP Request configuration" doc:id="c11a8867-0724-4104-a33c-ad192eac556e" >
+		<http:request-connection host="www.wixapis.com" protocol="HTTPS"/>
+	</http:request-config>
+
+	
+	<os:object-store name="Object_store_acc_wix" doc:name="Object store" doc:id="2634457f-fa69-414d-8e3c-388f963220c1" entryTtl="1" entryTtlUnit="HOURS" />
+	<global-property doc:name="Global Property" doc:id="4530f00b-d50b-4cce-8c96-a3225e552d9d" name="token_open_ai" value='""'/>
+	<file:config name="File_Config" doc:name="File Config" doc:id="e781262a-7719-4c52-9c1a-c81db0bfb75f" />
+
+	<email:smtp-config name="Email_SMTP" doc:name="Email SMTP" doc:id="d0457629-0811-43f9-b0af-a67bf8a48ec7" >
+		<email:smtp-connection host="smtp.gmail.com" port="587" user="boussandel.nour15@gmail.com" password="15Septembre**">
+			<email:properties >
+				<email:property key="mail.smtpstarttls.enable" value="true" />
+			</email:properties>
+		</email:smtp-connection>
+	</email:smtp-config>
+	<flow name="client" doc:id="b47710fd-8c14-4a7a-991f-020ce730d86f">
+		<http:listener doc:name="Listener" doc:id="75e4c47f-94c6-40fc-92d4-0efb5e929c1e" config-ref="HTTP_Listener_config" path="/client" />
+		<set-variable value="#[payload]" doc:name="message client" doc:id="494b4aef-37d1-425e-92b5-60da790f86fe" variableName="messageClient"/>
+		<flow-ref doc:name="vers classification" doc:id="82d60793-7109-4fc8-bbad-b4f0566de81d" name="classification"/>
+	</flow>
+	<flow name="classification" doc:id="fd63a9a5-64a4-45dc-be02-9fc62c812b00" >
+		<ee:transform doc:name="Transform Message" doc:id="243d7f77-5658-4bdb-8b70-e29c06c035a1" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"model": "gpt-3.5-turbo",
+	"messages": [{
+		"role": "system",
+		"content": "Réponds avec 1 ou 2 ou 3 .
+1 si la demande de le client est une demande d'informations concernant un produit spécifique.
+2 si le client veut acheter un produit.
+3 si la demande de client est hors de ces deux services mentionnées ci-dessous. "
+	},{
+		"role": "user",
+		"content": vars.messageClient as String
+	}]
+}
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<flow-ref doc:name="vers Completion Api" doc:id="3d064862-d5aa-4051-a167-81468bbb9a4f" name="completionApi"/>
+		<choice doc:name="Choice" doc:id="c53a14ab-f09a-4fec-a157-f0d4dba32979" >
+			<when expression="#[payload.chatResponse == '1']">
+				<flow-ref doc:name="informations Product" doc:id="d45bc18b-cbe0-43a9-a6c2-2deb1138e456" name="InformationsProduit" targetValue="#[payload.chatResponse]"/>
+			</when>
+			<when expression="#[payload.chatResponse == '2']">
+				<flow-ref doc:name="verifstock" doc:id="6b52c878-c719-4478-9f18-8a70bdb31759" name="verifstock"/>
+			</when>
+			<when expression="#[payload.chatResponse == '3']">
+				<ee:transform doc:name="direction message" doc:id="057f278c-65dc-4726-a027-ccf5b83eff6e" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	DirectionMessage: "Bonjour,Merci de nous avoir contactés. Nous avons bien reçu votre demande. Cependant, il semble que votre question ne concerne pas les informations relatives à nos produits. Notre service est spécialisé dans la fourniture de détails et de spécifications sur nos gammes de produits."
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise>
+				<logger level="INFO" doc:name="Logger" doc:id="aff2d014-49ae-4141-9269-8a18a1c9653a" message="erreuuuuur"/>
+			</otherwise>
+		</choice>	
+</flow>
+	<flow name="VerificationProduitExiste" doc:id="9aba75bc-58a6-463e-8d30-b5431fefccb2" >
+		<ee:transform doc:name="Transform Message" doc:id="0243aefb-cdc4-4ed6-b0a4-78c3f69cfc6c">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"model": "gpt-3.5-turbo",
+	"messages": [{
+		"role": "system",
+		"content": "extrait seulement le nom de produit que le client cherche : " ++ (vars.messageClient as String)
+	}
+	]
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+		<flow-ref doc:name="completionApi" doc:id="9866ab54-4c3c-4dd5-82e5-0e4d2f36805e" name="completionApi" />
+		<set-variable value="#[payload.chatResponse]" doc:name="searchTerm " doc:id="af68ffad-f5a0-411b-8a2e-90f7ebb080f2" variableName="searchTerm "/>
+		<flow-ref doc:name="getProductInformationsWix" doc:id="762fdb27-2381-4442-a9eb-b00b47627536" name="getProductInformationsWix" />
+		<ee:transform doc:name="produit existe ou non" doc:id="0f91aa24-6092-4532-ac74-147995ac7ec2">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+var productName = vars.searchTerm as String
+
+---
+ payload filter (product) -> 
+           upper(product.name) contains upper(productName)  ]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="InformationsProduit" doc:id="9b11bed8-d3bc-4182-aa5c-327607672797" >
+		<flow-ref doc:name="VerificationProduitExiste" doc:id="445e3312-42d8-4d0d-aff2-8ede561c92cf" name="VerificationProduitExiste"/>
+		<choice doc:name="Choice" doc:id="9b4b4f55-7446-4922-8b1a-a31638ddf599" >
+			
+			<when expression="#[payload != []]" >
+				<ee:transform doc:name="Transform Message" doc:id="5dad251a-9fb0-442b-a525-602b047224cb">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "model": "ft:gpt-3.5-turbo-0125:personal::9O9yTgZV",
+    "messages": [
+        {
+            "role": "system",
+            "content": "je suis un chatbot commercial qui vend des produits cosmétiques et vestimentaires. je dois répondre à toutes les questions de l'utilisateur concernant les produits que je vends. je dispose de ces informations concernant le produit recherché: " ++ write(payload, "application/json")
+            ++ "je dois formuler une phrase cohérente pour repondre le client concernant ce produit pour l'encourager à acheter"
+        },
+        {
+            "role": "user",
+            "content": vars.messageClient as String
+            
+        }
+    ]
+}
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<flow-ref doc:name="Flow Reference" doc:id="e8dc3dee-0146-4c68-82a0-fe49403708b3" name="completionApi"/>
+			</when>
+			<when expression="#[payload == []]">
+				<set-payload value="produit non trouvé" doc:name="Set Payload" doc:id="8fc76e1d-b7d5-43bf-85cc-40d7b35744af" />
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="93adf73d-ed2a-4953-a7a7-d3ba7f006b72" message="hhhhhh"/>
+			</otherwise>
+		</choice>
+	</flow>
+	
+	<!-- [STUDIO:"fineTuning"]<flow name="fineTuning" doc:id="d3131dec-ecef-4ef0-b301-e8ca830248de">
+		<http:listener doc:name="Listener" doc:id="99371dae-09f2-40fa-a0ce-816fce95f1fb" config-ref="HTTP_Listener_config" path="/test" />
+		<file:read doc:name="Read" doc:id="5deeed12-ae18-4221-a561-30d6aa62222f" path="C:\Users\bouss\Desktop\data_final.jsonl" />
+		<ee:transform doc:name="Transform Message" doc:id="0020121f-fd2e-4023-9b50-002c684cb056">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output multipart/form-data
+&#45;&#45;-
+{
+    parts: {
+        file: {
+            headers: {
+                "Content-Disposition": "form-data; name=\"file\"; filename=\"/C:/Users/bouss/Desktop/data_final.jsonl\"",
+                "Content-Type": "application/octet-stream"
+            },
+            content: payload
+        },
+        purpose: {
+            headers: {
+                "Content-Disposition": "form-data; name=\"purpose\""
+            },
+            content: "fine-tune"
+        }
+    }
+}
+&#93;&#93;></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<http:request method="POST" doc:name="Request" doc:id="7804bbb2-4efc-464d-924e-5a2dea530bf9" config-ref="HTTP_Request_configuration_open_ai" path="/v1/files">
+			<http:headers><![CDATA[#[output application/java
+&#45;&#45;-
+{
+	Authorization: ""
+}&#93;&#93;&#93;></http:headers>
+		</http:request>
+		<logger level="INFO" doc:name="Logger" doc:id="7ed88657-9481-487b-ba42-bf46155c2cd0" message="#[payload&#93;"/>
+		<set-variable value="#[payload.id&#93;" doc:name="Set Variable" doc:id="6742157c-7834-4120-bb45-cd517bfff94e" variableName="idFile"/>
+		<logger level="INFO" doc:name="Logger" doc:id="ff494d1e-a70e-4b13-88c8-1942758d1d97" message="#[vars.id&#93;"/>
+		<http:request method="POST" doc:name="Request" doc:id="1224ae65-b94e-41b5-b5a5-03677266dd51" config-ref="HTTP_Request_configuration_open_ai" path="/v1/fine_tuning/jobs">
+			<http:body ><![CDATA[#[%dw 2.0
+output application/json
+&#45;&#45;-
+{
+     "training_file": vars.idFile,
+      "model":"gpt-3.5-turbo-0125"
+}&#93;&#93;&#93;></http:body>
+			<http:headers><![CDATA[#[%dw 2.0
+output application/json
+&#45;&#45;-
+{ "Content-Type" : "application/json" ,
+	Authorization: ""
+  }&#93;&#93;&#93;></http:headers>
+		</http:request>
+		<set-variable value="#[payload.fine_tuned_model&#93;" doc:name="Set Variable" doc:id="be4ae4a4-5273-426d-876e-b6d899825681" variableName="idModel"/>
+		<flow-ref doc:name="Flow Reference" doc:id="c0fc6c62-f8a2-4297-89d6-00e392c975f4" name="verifstock"/>
+	</flow> [STUDIO] -->
+	<flow name="generationImage" doc:id="29810400-cced-4c50-8a7c-8397ca5f219c" >
+		<http:listener doc:name="Listener" doc:id="7479e418-a9c3-4bde-b216-2ec75d6b1d0d" config-ref="HTTP_Listener_config" path="/image"/>
+		<flow-ref doc:name="Flow Reference" doc:id="6af6844b-b161-4268-a8d2-2702c07d1671" name="Retrieve_access_token"/>
+		<http:request method="GET" doc:name="Product description" doc:id="cd5c310d-345d-4d88-9693-b2d69ca93c3c" config-ref="HTTP_Request_configuration_wix" path="/stores-reader/v1/products/42b61097-fbbe-473e-b391-9cee3a045910">
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+   "Content-Type": "application/json",
+   "Authorization": vars.Access_token
+}]]]></http:headers>
+		</http:request>
+		<choice doc:name="Generer Image Par chatGpt ou du site E-com" doc:id="69674aa3-9b8b-475f-a439-533fba70dfb2" >
+			<when expression="#[payload.product.media.mainMedia.image.url != null]">
+				<http:request method="GET" doc:name="importer l'image de wix" doc:id="0a925732-80c6-46ea-917d-0d58afa7804c" url="#[payload.product.media.mainMedia.image.url]" outputMimeType="image/jpeg" />
+			</when>
+			<otherwise>
+				<logger level="INFO" doc:name="Logger" doc:id="26f24aca-bbb8-4d01-8240-686499a7fd32" message="url not found"/>
+			
+			</otherwise>
+		</choice>
+	</flow>
+	
+	<flow name="verifstock" doc:id="8256d0a4-b75b-4a6c-90ec-04e38dbf7c1a">
+		<flow-ref doc:name="VerificationProduitExiste" doc:id="d253f656-7a12-4293-8b29-c5ef88aa5436" name="VerificationProduitExiste"/>
+		<set-variable value="#[payload.id[0]]" doc:name="ProductId" doc:id="0f34026a-3ed5-4fb6-ae8b-e60f69e3596b" variableName="Product" />
+		<flow-ref doc:name="Flow Reference" doc:id="d163edbe-f2a7-4e33-addc-885575d1877e" name="Retrieve_access_token" />
+		<http:request method="POST" doc:name="getInventoryVariants" doc:id="9f45b02c-0b52-417f-8d0a-00f6294e78b4" config-ref="HTTP_Request_configuration_wix" path="/stores/v2/inventoryItems/query">
+			<http:body ><![CDATA[#[output application/json
+---
+{}]]]></http:body>
+			<http:headers ><![CDATA[#[output application/json 
+---
+{    "Content-Type" : "application/json",
+	"Authorization" : vars.Access_token
+}]]]></http:headers>
+		</http:request>
+		<ee:transform doc:name="verif les varients en Stock" doc:id="f021b422-ba24-401a-8e78-6c90a232cb99">
+			<ee:message>
+				<ee:set-payload><![CDATA[var productIdToCheck = vars.product
+
+// Filtrer les produits avec l'ID spécifié
+var product = payload.inventoryItems filter ((item) -> item.productId == productIdToCheck)
+
+// Vérifier si le produit existe et extraire ses variants en stock
+var variantsInStock = if (isEmpty(product)) [] else product[0].variants filter ($.inStock == true)
+output application/json
+---
+{    
+    "productId": productIdToCheck,
+    "variantsInStock": variantsInStock
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables>
+			</ee:variables>
+		</ee:transform>
+		<choice doc:name="Si produit non en Stock Recommandation" doc:id="da62098a-da71-4609-987d-32ff3f0b7dd9">
+			<when expression="#[payload.variantsInStock != [ ]]">
+				<set-variable value="#[payload.productId]" doc:name="ProductId" doc:id="95098511-bde3-4d86-9af8-ac067549e3ef" variableName="ProductId" />
+				<set-variable value="#[payload.variantsInStock.variantId]" doc:name="VariantInStock" doc:id="b68e3a6e-7dae-4511-987a-34451ea694b1" variableName="VariantInStock" />
+				<file:write doc:name="Write" doc:id="fcb216bd-107c-4ea6-8e15-bfb0470d4aff" path="C:\Users\bouss\Desktop\variantId.txt">
+			<file:content><![CDATA[#[""]]]></file:content>
+		</file:write>
+				<foreach doc:name="For Each Variant In Stock" collection="#[vars.VariantInStock]">
+        
+        <!-- Call Wix API to get product name from ID -->
+			<set-variable variableName="currentVariantId" value="#[payload]" doc:name="Set variant Product ID" />
+			<flow-ref doc:name="Flow Reference" doc:id="17047737-e0e8-49cb-b37f-4083687fce2e" name="Retrieve_access_token" />
+			<http:request method="GET" doc:name="Get Product Name" config-ref="HTTP_Request_configuration_wix" path="/stores-reader/v1/variants/{id}">
+				<http:headers><![CDATA[#[output application/java
+---
+{
+   
+   "Authorization": vars.Access_token
+}]]]></http:headers>
+				<http:uri-params><![CDATA[#[output application/json
+---
+{
+	"id" : "$(vars.ProductId)-$(vars.currentVariantId)"
+}]]]></http:uri-params>
+			
+			</http:request>
+        
+        <!-- Parse response JSON to extract product name -->
+        <ee:transform doc:name="Extract Variant Name">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+                    output application/json
+                    ---
+                    {
+                        "productName":payload.variant.productName,
+                        "VariantName": payload.variant.variantName
+                    }]]></ee:set-payload>
+            </ee:message>
+            <ee:variables>
+                <ee:set-variable variableName="currentProductName"><![CDATA[%dw 2.0
+                    output application/json
+                    ---
+                    payload.productName]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        
+        <!-- Add current product name to the list of product names -->
+			<file:write doc:name="Write" doc:id="22d2f21c-6263-468e-8944-35cf478388ec" path="C:\Users\bouss\Desktop\variantId.txt" mode="APPEND">
+				<file:content><![CDATA[#[payload.productName ++ " " ++ payload.VariantName ++ " "]]]></file:content>
+			</file:write>
+    
+</foreach>
+				<file:read doc:name="Read" doc:id="72b8d8ba-ba78-4eb3-a000-6b26ba957608" path="C:\Users\bouss\Desktop\variantId.txt" />
+				<ee:transform doc:name="Transform Message" doc:id="0a7b37df-2284-48c8-9c8b-3a48ba56bf6b">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "model": "ft:gpt-3.5-turbo-0125:personal::9O9yTgZV",
+    "messages": [
+        {
+            "role": "system",
+            "content": "Je suis un chatbot commercial spécialisé dans la vente de produits cosmétiques et vestimentaires.  Mon rôle est de répondre à toutes vos questions concernant notre gamme de produits. De plus, je suis là pour améliorer votre expérience d'achat."
+        },
+        {
+            "role": "user",
+            "content": "voici le nom d'un produit suivi des noms de ses varients qui sont en stock, formule une phrase cohérente à partir de ces données pour encourager le client à acheter l'un des varients disponibles "
+            ++ (if (payload != null) payload else "Aucun produit disponible") 
+            
+        }
+    ]
+}
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+				<flow-ref doc:name="Flow Reference" doc:id="73461c7d-754e-4595-921d-677dbcd565e4" name="completionApi" />
+			</when>
+			<when expression="#[payload.variantsInStock == [ ]]" >
+				<flow-ref doc:name="RecommandationProduitSimilaire" doc:id="eaebb3ff-b41b-4822-b800-b2c399fbdf11" name="RecommandationProduitSimilaire"/>
+			</when>
+			<otherwise>
+				<set-payload value="Produit non trouvé" doc:name="Set Payload" doc:id="dd670840-2a6b-4836-a489-1b462f853050" />
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="RecommandationProduitSimilaire" doc:id="b7c5c169-938a-43cb-b033-cd227f2de3c6" >
+		<flow-ref doc:name="Flow Reference" doc:id="6ce61cb4-4e63-44b8-b9e4-2f375f650fb6" name="Retrieve_access_token"/>
+		<http:request method="GET" doc:name="Get Product" doc:id="da127a58-bf7b-4ba6-bf99-6e32a028186b" config-ref="HTTP_Request_configuration_wix" path="/stores-reader/v1/products/{id}">
+			<http:headers ><![CDATA[#[output application/json 
+---
+{
+	"Authorization" : vars.Access_token
+}]]]></http:headers>
+			<http:uri-params ><![CDATA[#[output application/json
+---
+{ "id" : "$(vars.Product)"}]]]></http:uri-params>
+		</http:request>
+		<set-variable value="#[payload.product.name]" doc:name="ProductName" doc:id="1f0186b8-bce1-447e-a084-02ebd1b94887" variableName="ProductName"/>
+		<flow-ref doc:name="Flow Reference" doc:id="eb656ed4-a143-4c3c-b8a1-09998f74d6e1" name="getProductInformationsWix" />
+		<ee:transform doc:name="Transform Message" doc:id="f410a1d8-8462-4e17-97c8-0d7c0e12c14f">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "model": "ft:gpt-3.5-turbo-0125:personal::9O9yTgZV",
+    "messages": [
+        {
+            "role": "system",
+            "content": "Je suis un chatbot commercial spécialisé dans la vente de produits cosmétiques et vestimentaires. Mon rôle est de répondre à toutes vos questions concernant notre gamme de produits. De plus, je suis là pour vous recommander des produits similaires afin d'améliorer votre expérience d'achat.
+
+les informations sur les produits actuellement disponibles que je dispose: " ++ write(payload, "application/json") ++ ".
+
+Et le produit que vous recherchez est : " ++ (vars.ProductName) as String ++ " je dois formuler un paragraphe cohérent pour convaincre le client par ce produit similaire si je le trouve"
+        }
+    ]
+}
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+		<flow-ref doc:name="Flow Reference" doc:id="2c5c2ad0-5379-4d4d-ae37-dec1b54043eb" name="completionApi" />
+	</flow>
+	
+	<flow name="getProductInformationsWix" doc:id="6ca0a29c-5f39-4987-9d93-864ebe5ce722" >
+		<http:listener doc:name="Listener" doc:id="616bd080-2095-4349-83b9-f3bc5e4edfe5" config-ref="HTTP_Listener_config" path="test"/>
+		<flow-ref doc:name="Flow Reference" doc:id="4522c881-c93e-42a7-9540-dd5ed0040082" name="Retrieve_access_token" />
+		<http:request method="POST" doc:name="Request" doc:id="ddc2105e-af43-4183-b892-80e1e4ea6079" config-ref="HTTP_Request_configuration_wix" path="/stores/v1/products/query" >
+			<http:body ><![CDATA[#[output application/json
+---
+{}]]]></http:body>
+			<http:headers ><![CDATA[#[output application/json 
+---
+{
+	"Authorization" : vars.Access_token
+}]]]></http:headers>
+		</http:request>
+		<ee:transform doc:name="Transform Message" doc:id="d6cb29fa-c2e3-4ff5-90dc-9188ca5754ed" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload.products map {
+  id: $.id,
+  name: $.name,
+  description: $.description,
+  productOptions : $.productOptions,
+  price : $.price.formatted.price,
+  discount : $.discount.value
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="promotion" doc:id="774992cd-437c-4c61-90cd-e7d01a7ebfb6" >
+		<http:listener doc:name="Listener" doc:id="db3dc19c-dda2-4fd6-86b9-7f7e1ac3b3e1" config-ref="HTTP_Listener_config" path="/promo"/>
+		<flow-ref doc:name="Retrieve_access_token" doc:id="4b1be7c1-0d9f-409a-974c-4a8587e41b0c" name="Retrieve_access_token"/>
+		<http:request method="POST" doc:name="DiscountRules" doc:id="a290191e-9cd7-4a97-8616-658e24519a93" config-ref="HTTP_Request_configuration_wix" path="/ecom/v1/discount-rules/query">
+			<http:body ><![CDATA[#[output application/json
+---
+{}]]]></http:body>
+			<http:headers ><![CDATA[#[output application/json 
+---
+{   
+    "content-type" : "application/json",
+    "Authorization" : vars.Access_token
+}]]]></http:headers>
+		</http:request>
+		<ee:transform doc:name="Filtrage promotion  expiré" doc:id="4ba0b7e9-60af-4020-94e2-a669a7ef6d2e" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+import * from dw::core::Dates
+
+// Obtenir la date actuelle
+var currentDate = now()
+
+// Filtrer les données
+---
+payload.discountRules 
+    filter (item) -> 
+        item.activeTimeInfo.end != null and 
+        (item.activeTimeInfo.end as DateTime {format: "yyyy-MM-dd'T'HH:mm:ssXXX"}) > currentDate
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="affichage promotion non expiré" doc:id="39fe65dd-3217-4e9c-95e4-584cae097235" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+import * from dw::core::Dates
+
+---
+payload
+    map  {
+        nom: $.name,
+        offer: $.offer,
+        debut: 
+            $.activeTimeInfo.start as DateTime  {format: "yyyy-MM-dd'T'HH:mm:ssXXX"} ,
+            
+        fin: 
+          $.activeTimeInfo.end as DateTime  {format: "yyyy-MM-dd'T'HH:mm:ssXXX"}
+          
+      }
+          ]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	
+	<flow name="RecommandationParHistoriqueAchat" doc:id="87102ab5-8b0d-4231-a75b-c3c9cd408841" >
+		<http:listener doc:name="Listener" doc:id="feb7dbc4-3ea6-4f54-837e-ca8e2a430a52" config-ref="HTTP_Listener_config" path="/historiqueAchat"/>
+		<flow-ref doc:name="Flow Reference" doc:id="790bf209-ae77-45cb-b0a5-ec90d1f08347" name="Retrieve_access_token"/>
+		<ee:transform doc:name="Transform Message" doc:id="f52f0f6e-755c-4484-9f0d-b54b5b770239" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "search": {
+      "filter": {
+        "paymentStatus": "PAID",
+        "fulfillmentStatus": "FULFILLED",
+        "buyerInfo.email" : "nourelhouda.boussandel@ensi-uma.tn"
+      }
+     
+  }
+  }]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<http:request method="POST" doc:name="produit achetés" doc:id="a5b2f47b-7202-4c99-a063-3c30f58778e0" config-ref="HTTP_Request_configuration_wix" path="/ecom/v1/orders/search">
+			<http:headers ><![CDATA[#[output application/json 
+---
+{   
+    "content-type" : "application/json",
+    "Authorization" : vars.Access_token
+}]]]></http:headers>
+		</http:request>
+		<ee:transform doc:name="grouper par nom de produit" doc:id="7a98b990-4864-4796-a027-3df80dfb7c40" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+var orders = payload.orders flatMap $.lineItems map {
+	nomProduit: $.productName.original,
+	quantity: $.quantity
+}
+---
+
+ orders groupBy $.nomProduit]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="productCounts" doc:id="7a641c08-386b-4350-8585-abc34f84d065" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+
+---
+payload pluck ((value, key) -> {
+    name: key,
+    total: value map ((item) -> item.quantity ) reduce ((acc, qty) -> acc + qty)
+})]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="recommendedProduct" doc:id="5bf5505d-e316-4578-9403-c45ccebd920d" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+var maxProduct = payload reduce ((acc, item) -> 
+    if ( item.total > acc.total ) item
+    else acc )
+---
+maxProduct]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="testjava" doc:id="2d8c95ef-43f6-4ff1-978d-8844b111c46b" >
+		<http:listener doc:name="Listener" doc:id="5bb58ab7-0844-4704-9d1b-addc2f960c74" config-ref="HTTP_Listener_config" path="/java"/>
+		<java:invoke-static doc:name="Invoke static" doc:id="88e98550-78ea-462d-ac79-3cbcebf5c25a" class="classification.ProductScraper" method="test()">
+		</java:invoke-static>
+		<logger level="INFO" doc:name="Logger" doc:id="734c39c3-3f5c-44e8-8630-9798611afbd6" message="#[payload]"/>
+	</flow>
+<flow name="Store_Access_Token" doc:id="e70de045-662a-49d8-b6a7-5e8a664ad4a3">
+    <scheduler doc:name="Scheduler" doc:id="c181b56e-307f-411c-90e3-cd937f35d221">
+        <scheduling-strategy >
+            <fixed-frequency frequency="5" timeUnit="MINUTES"/>
+        </scheduling-strategy>
+    </scheduler>
+    <ee:transform doc:name="Transform Message" doc:id="3893cfd3-2660-42ba-8d04-e9fc8ea845ad">
+        <ee:message>
+            <ee:set-payload><![CDATA[%dw 2.0
+                output application/json
+                ---
+                {
+    "grant_type": "refresh_token",
+    "client_id": "e5997400-b667-458b-9f16-9d29f5cf4a47",
+    "client_secret": "d6e1cb9f-1756-407e-963c-62ad86f7f2c5",
+    "refresh_token": "OAUTH2.eyJraWQiOiJkZ0x3cjNRMCIsImFsZyI6IkhTMjU2In0.eyJkYXRhIjoie1wiaWRcIjpcIjE4ZGU4MDQ3LTIwMjMtNGY5YS1iNjc4LWFjZThkZTg5OTA4ZVwifSIsImlhdCI6MTcxNDY2MzAyMywiZXhwIjoxNzc3NzM1MDIzfQ.Hm94bhXWuXgblqUKQJ5XBU3LjHZxeW3okJfHFynhW3Q"
+    
+    }]]></ee:set-payload>
+        </ee:message>
+    </ee:transform>
+    <http:request method="POST" doc:name="Request Access Token" doc:id="afe80ab1-3845-4b67-b419-4a18dc8d9e23" config-ref="HTTP_Request_configuration_wix" path="/oauth/access">
+        <http:headers><![CDATA[#[output application/json
+            ---
+            {
+                "content-type": "application/json"
+            }]]]></http:headers>
+    </http:request>
+    <set-variable value="#[payload.access_token]" doc:name="Set Access Token" doc:id="2cf604ae-6b05-49fd-8e8c-65045c0de916" variableName="store_access_token"/>
+    <os:store doc:name="Store Access Token" doc:id="222e32d5-8518-4bfb-8083-bc08aa49ed9e" key="access_token" objectStore="Object_store_acc_wix">
+        <os:value><![CDATA[#[payload.access_token]]]></os:value>
+    </os:store>
+</flow>
+	<flow name="Retrieve_access_token" doc:id="11922d5b-a780-448f-9913-429b07cde209" >
+    <os:retrieve doc:name="Retrieve Access Token" doc:id="8f8780f7-aff5-4182-869e-c03f8553a1a5" key="access_token" objectStore="Object_store_acc_wix">
+			<os:default-value ><![CDATA[#[' ']]]></os:default-value>
+		</os:retrieve>
+		<set-variable value="#[payload]" doc:name="obtention_access_token" doc:id="2c74c4d2-bbfe-4e3d-909d-85b6f0de231c" variableName="Access_token"/>
+	</flow>
+	<flow name="completionApi" doc:id="ca9ee0b8-d7c0-42db-a126-0f7e2b38bfc7" >
+		<http:request method="POST" doc:name="Request" doc:id="9408f58f-6786-429a-8f71-a00494bcc030" config-ref="HTTP_Request_configuration_open_ai" path="/v1/chat/completions">
+			<http:headers><![CDATA[#[output application/json 
+---
+{
+	"content-type" : "application/json",
+	"Authorization" : ""
+}]]]></http:headers>
+		</http:request>
+		<ee:transform doc:name="Transform Message" doc:id="b4ab78a7-c02a-4c01-ae88-2785586a1157" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+                        output application/json
+                        ---
+                        {
+                            chatResponse: payload.choices[0].message.content
+                        }]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>

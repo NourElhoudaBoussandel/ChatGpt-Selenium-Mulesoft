@@ -1,0 +1,5 @@
+%dw 2.0
+
+type auto_3c6d6d39_dedd_4ea5_be3a_68af62eba961_Output_Variables_Access_token = {|  |} {"typeAlias": "Serializable",
+"typeId": "java.io.Serializable"}
+

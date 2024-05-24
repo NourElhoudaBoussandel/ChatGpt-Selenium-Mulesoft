@@ -1,0 +1,7 @@
+%dw 2.0
+
+type auto_bbd4b46e_cf92_44d4_b853_27d974d3cdac_Input_Payload = {|
+  model: String, 
+  messages: Array<{|    role: String,     content: String  |} | {|    role: String,     content: String,     temperature: Number,     max_tokens: Number  |}>
+|}
+

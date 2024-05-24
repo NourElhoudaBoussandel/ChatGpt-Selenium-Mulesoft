@@ -1,0 +1,15 @@
+%dw 2.0
+
+type auto_db499c75_733d_4798_ac13_f62a87080795_Output_Variables_rootMessage = {|
+  payload: {| variantsInStock: Any |}, 
+  attributes: org_mule_extension_http_api_HttpResponseAttributes
+|} {"typeId": "org.mule.runtime.api.message.Message"}
+type org_mule_extension_http_api_HttpResponseAttributes = {|
+  statusCode: Number, 
+  reasonPhrase: String, 
+  headers: { _?: String }
+|} {"typeAlias": "HttpResponseAttributes",
+"typeId": "org.mule.extension.http.api.HttpResponseAttributes"}
+
+
+
