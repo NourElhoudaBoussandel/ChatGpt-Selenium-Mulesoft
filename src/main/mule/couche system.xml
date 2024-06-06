@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+	<http:request-config name="HTTP_Request_configuration_open_ai" doc:name="HTTP Request configuration" doc:id="effc9d26-653b-406d-b482-2bc0ddfaa645" >
+		<http:request-connection port="443" protocol="HTTPS" host="api.openai.com"/>
+	</http:request-config>
+	<http:request-config name="HTTP_Request_configuration_wix" doc:name="HTTP Request configuration" doc:id="5566f8fa-61e4-45a6-b3e7-412acffc8642" >
+		<http:request-connection host="www.wixapis.com" />
+	</http:request-config>
+	<http:listener-config name="HTTP_Listener_config_couche_system" doc:name="HTTP Listener config" doc:id="8d0c9553-86ae-4b06-8a9e-0f39f9d41fe9" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<os:object-store name="Object_store_acc_wix" doc:name="Object store" doc:id="e4e4b2bc-6aaf-4fec-961b-af4e6b9120ce" entryTtl="1" entryTtlUnit="HOURS" />
+	<flow name="completionApi" doc:id="b8ce4646-4d53-4eb8-888f-b45c5f82f712" >
+		<http:listener doc:name="Listener" doc:id="8cb5187f-c408-48cb-81ae-9f4b63b6cd8a" config-ref="HTTP_Listener_config_couche_system" path="/completionApi"/>
+		<http:request method="POST" doc:name="Request" doc:id="453bd7cb-ad5b-4085-9782-bab428d23efc" path="/v1/chat/completions" config-ref="HTTP_Request_configuration_open_ai">
+			<http:headers ><![CDATA[#[output application/json 
+---
+{
+	"content-type" : "application/json",
+	"Authorization" : ""
+}]]]></http:headers>
+		</http:request>
+		<ee:transform doc:name="Transform Message" doc:id="6a04601f-09f3-4c3c-a9bf-7fc5a5c35671" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+                        output application/json
+                        ---
+                        {
+                            reponse : payload.choices[0].message.content,
+                            url: if (vars.url != null) vars.url else null
+                            
+                        }]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="getProductInformationsWix" doc:id="efae0066-ab92-4dec-9ee5-3d18f5e9552c" >
+		<http:listener doc:name="Listener" doc:id="020714e5-2d14-4442-8397-3b21776d0f4f" config-ref="HTTP_Listener_config_couche_system" path="/wixApi"/>
+		<flow-ref doc:name="Flow Reference" doc:id="fa182a7b-8fbf-423f-ad89-ebb57179c763" name="Retrieve_access_token" />
+		<http:request method="POST" doc:name="Request" doc:id="f14864d2-79fd-48a9-a0bd-ebccb4b173e7" config-ref="HTTP_Request_configuration_wix" path="/stores/v1/products/query" >
+			<http:body ><![CDATA[#[output application/json
+---
+{}]]]></http:body>
+			<http:headers ><![CDATA[#[output application/json 
+---
+{
+	"Authorization" : vars.Access_token
+}]]]></http:headers>
+		</http:request>
+		<ee:transform doc:name="Transform Message" doc:id="81a73181-0160-465d-af30-f95d29dd81a7" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload.products map {
+  id: $.id,
+  name: $.name,
+  description: $.description,
+  productOptions : $.productOptions,
+  price : $.price.formatted.price,
+  discount : $.discount.value,
+  url : $.media.mainMedia.image.url
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="Retrieve_access_token" doc:id="46285095-ef07-495f-b134-98bf58db41d0" >
+		<os:retrieve doc:name="Retrieve Access Token" doc:id="35c8516f-a27d-4a14-9af3-87c73d441094" key="access_token">
+			<os:default-value ><![CDATA[#[' ']]]></os:default-value>
+		</os:retrieve>
+		<set-variable value="#[payload]" doc:name="obtention_access_token" doc:id="1ce65bba-445a-4c27-8d12-59d055227d37" variableName="Access_token" />
+	</flow>
+	<flow name="Store_Access_Token" doc:id="d35e0df1-99e0-4bd7-ad2e-1f741fe14b81" >
+		<scheduler doc:name="Scheduler" doc:id="464b2a83-6107-46a2-86bd-1c168f3e13d1" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="5" timeUnit="MINUTES" />
+			</scheduling-strategy>
+		</scheduler>
+		<ee:transform doc:name="Transform Message" doc:id="2c2d57fc-2079-41c7-96fc-a340ddfd64fb" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+                output application/json
+                ---
+                {
+    "grant_type": "refresh_token",
+    "client_id": "e5997400-b667-458b-9f16-9d29f5cf4a47",
+    "client_secret": "d6e1cb9f-1756-407e-963c-62ad86f7f2c5",
+    "refresh_token": "OAUTH2.eyJraWQiOiJkZ0x3cjNRMCIsImFsZyI6IkhTMjU2In0.eyJkYXRhIjoie1wiaWRcIjpcIjE4ZGU4MDQ3LTIwMjMtNGY5YS1iNjc4LWFjZThkZTg5OTA4ZVwifSIsImlhdCI6MTcxNDY2MzAyMywiZXhwIjoxNzc3NzM1MDIzfQ.Hm94bhXWuXgblqUKQJ5XBU3LjHZxeW3okJfHFynhW3Q"
+    
+    }]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<http:request method="POST" doc:name="Request Access Token" doc:id="649ba8b2-e3c4-4b3d-bba4-3e6b5c77c1da" config-ref="HTTP_Request_configuration_wix" path="/oauth/access" >
+			<http:headers ><![CDATA[#[output application/json
+            ---
+            {
+                "content-type": "application/json"
+            }]]]></http:headers>
+		</http:request>
+		<set-variable value="#[payload.access_token]" doc:name="Set Access Token" doc:id="9eaf91e1-4345-48a0-81a8-3f62db57637d" variableName="store_access_token" />
+		<os:store doc:name="Store Access Token" doc:id="80e683d6-35d0-4687-b4cd-c0e4b93cc9a5" key="access_token">
+			<os:value ><![CDATA[#[payload.access_token]]]></os:value>
+		</os:store>
+	</flow>
+</mule>
