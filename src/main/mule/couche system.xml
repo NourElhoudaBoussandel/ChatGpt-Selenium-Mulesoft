@@ -70,6 +70,7 @@ payload.products map {
 		</ee:transform>
 	</flow>
 	<flow name="Retrieve_access_token" doc:id="46285095-ef07-495f-b134-98bf58db41d0" >
+		<http:listener doc:name="Listener" doc:id="2f27fbb5-e9e4-440c-bd2b-44b5f9542e8a" config-ref="HTTP_Listener_config_couche_system" path="/accesstoken"/>
 		<os:retrieve doc:name="Retrieve Access Token" doc:id="35c8516f-a27d-4a14-9af3-87c73d441094" key="access_token">
 			<os:default-value ><![CDATA[#[' ']]]></os:default-value>
 		</os:retrieve>
